@@ -1,0 +1,95 @@
+---
+title: "Correspondents"
+---
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(dplyr)
+library(visNetwork)
+library(readr)
+
+# Load data
+kimball <- read_csv(
+  "data/kimball.csv",
+  show_col_types = FALSE
+)
+
+# Count letters by author
+author_counts <- kimball |> 
+  filter(!is.na(author)) |> 
+  count(author, sort = TRUE)
+
+# Create author nodes
+nodes <- author_counts |> 
+  mutate(
+    id = author,
+    label = "",
+    value = n,
+    mass = n,
+    title = paste0(
+      "<b>", author, "</b><br>",
+      "Letters sent: ", n
+    ),
+    shape = "dot"
+  ) |> 
+  select(id, label, value, mass, title, shape)
+
+# Create connections from authors to Frederick J. Kimball
+edges <- author_counts |> 
+  mutate(
+    from = author,
+    to = "Frederick J. Kimball",
+    value = n,
+    title = paste0(n, " letters")
+  ) |> 
+  select(from, to, value, title)
+
+# Add Frederick J. Kimball as central node
+kimball_node <- data.frame(
+  id = "Frederick J. Kimball",
+  label = "Frederick J. Kimball",
+  value = 20,
+  mass = 5,
+  title = "<b>Frederick J. Kimball</b><br>Central figure",
+  shape = "star"
+)
+
+nodes <- bind_rows(nodes, kimball_node)
+
+# Interactive network
+visNetwork(nodes, edges) |> 
+  visNodes(
+    scaling = list(
+      min = 5,
+      max = 40
+    ),
+    font = list(
+      size = 14
+    )
+  ) |> 
+  visEdges(
+    smooth = TRUE,
+    color = list(
+      opacity = 0.5
+    )
+  ) |> 
+  visPhysics(
+    solver = "forceAtlas2Based",
+    forceAtlas2Based = list(
+      gravitationalConstant = -80,
+      centralGravity = 0.25,
+      springLength = 120,
+      springConstant = 0.05
+    )
+  ) |> 
+  visOptions(
+    highlightNearest = TRUE
+  ) |> 
+  visInteraction(
+    hover = TRUE,
+    navigationButtons = TRUE
+  )
+```
